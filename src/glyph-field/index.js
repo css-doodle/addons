@@ -112,7 +112,7 @@ customElements.whenDefined('css-doodle').then(() => {
 
     // `name: value;` declarations, cut at the semicolons outside parentheses
     // and quotes; a name alone is a flag. Null when none names a known
-    // option, for the older `value, name value, …` form.
+    // option, for a call that is the main value alone.
     function declarations(text, names) {
         let pieces = [], depth = 0, quote = '', from = 0;
         for (let i = 0; i < text.length; i++) {
@@ -127,23 +127,12 @@ customElements.whenDefined('css-doodle').then(() => {
         return list.some(([name, value]) => value != null && names.includes(name)) ? list : null;
     }
 
-    // `text: …;` then the options, `skeleton` alone; or in the older form the
-    // text, then `name value` options, where a piece that names no option
-    // belongs to the one before
+    // `text: …;` then the options, `skeleton` alone, or the text alone
     function read(args, warn) {
-        let options = {}, list = declarations(args.join(','), ['text', ...OPTIONS]);
-        if (list) for (let [name, value] of list) {
+        let text = args.join(',').trim(), options = {};
+        for (let [name, value] of declarations(text, ['text', ...OPTIONS]) ?? [['text', text]]) {
             if (name == 'skeleton' ? value == null : value != null && (name == 'text' || OPTIONS.includes(name))) options[name] = value ?? '';
             else warn(`unknown option ${name}`);
-        } else {
-            let pieces = [], name = 'text';
-            for (let arg of args.map(String)) {
-                let key = arg.trim().split(/\s/)[0];
-                if (pieces.length && OPTIONS.includes(key)) pieces.push([name = key, arg.trim().slice(key.length).trim()]);
-                else if (pieces.length) pieces.at(-1)[1] += ',' + arg;
-                else pieces.push([name, arg]);
-            }
-            for (let [key, value] of pieces) options[key] = value.trim();
         }
         options.text = (options.text ?? '').replace(/^(['"])(.*)\1$/s, '$2');
         return options;

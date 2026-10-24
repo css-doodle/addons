@@ -185,7 +185,7 @@ customElements.whenDefined('css-doodle').then(() => {
 
     // `name: value;` declarations, cut at the semicolons outside parentheses
     // and quotes; a name alone is a flag. Null when none names a known
-    // option, for the older `value, name value, …` form.
+    // option, for a call that is the main value alone.
     function declarations(text, names) {
         let pieces = [], depth = 0, quote = '', from = 0;
         for (let i = 0; i < text.length; i++) {
@@ -200,31 +200,21 @@ customElements.whenDefined('css-doodle').then(() => {
         return list.some(([name, value]) => value != null && names.includes(name)) ? list : null;
     }
 
-    // `sample: …;` and the options as declarations, `ground` alone; or in the
-    // older form the sample, then options and legend entries after commas
-    function readOptions([sample = '', ...rest], { split, words, warn }) {
-        let options = { sample: String(sample), legend: {}, n: 3, symmetry: 8, ground: false };
-        let set = (name, value) => {
-            if (name == 'n' && /^[23]$/.test(value)) options.n = +value;
-            else if (name == 'symmetry' && /^[1-8]$/.test(value)) options.symmetry = +value;
-            else if (name == 'ground' && !value) options.ground = true;
-            else return false;
-            return true;
-        };
-        let list = declarations([sample, ...rest].join(','), ['sample', 'legend', 'n', 'symmetry']);
-        if (list) for (let [name, value] of list) {
+    // `sample: …;` and the options as declarations, `ground` alone, or the
+    // sample alone
+    function readOptions(args, { split, words, warn }) {
+        let text = args.join(','), options = { sample: text, legend: {}, n: 3, symmetry: 8, ground: false };
+        for (let [name, value] of declarations(text, ['sample', 'legend', 'n', 'symmetry']) ?? []) {
             if (name == 'sample' && value != null) options.sample = value;
             else if (name == 'legend' && value != null) for (let entry of split(value)) {
                 let [key, ...parts] = words(entry);
                 if (parts.length) options.legend[key] = parts.join(' ');
                 else warn(`invalid legend ${entry}`);
             }
-            else if (!set(name, value)) warn(`unknown option ${name}${value == null ? '' : ': ' + value}`);
-        } else for (let arg of rest) {
-            let [name, ...value] = words(String(arg));
-            if (set(name, value.join(' '))) continue;
-            if (value.length) options.legend[name] = value.join(' ');
-            else warn(`unknown option ${arg}`);
+            else if (name == 'n' && /^[23]$/.test(value)) options.n = +value;
+            else if (name == 'symmetry' && /^[1-8]$/.test(value)) options.symmetry = +value;
+            else if (name == 'ground' && value == null) options.ground = true;
+            else warn(`unknown option ${name}${value == null ? '' : ': ' + value}`);
         }
         return options;
     }

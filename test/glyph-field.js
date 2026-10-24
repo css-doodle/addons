@@ -66,19 +66,19 @@ test('quotes around the text go, spaces only move the pen', () => {
 });
 
 test('tracking adds to the advance', () => {
-    let [a, b] = glyphs(draw('content: "@glyph-field(ab, tracking 10)"').value);
+    let [a, b] = glyphs(draw('content: "@glyph-field(text: ab; tracking: 10)"').value);
     assert.ok(span(b, 0)[0] - span(a, 0)[1] > 8);
 });
 
 test('the font option keeps its commas and sets the face', () => {
     fonts.length = 0;
-    draw('content: "@glyph-field(a, font italic bold Georgia, serif)"');
+    draw('content: "@glyph-field(text: a; font: italic bold Georgia, serif)"');
     assert.ok(fonts.includes('italic bold 160px Georgia,serif'), fonts.join('|'));
 });
 
 test('skeleton gives the middle line of a letter, open', () => {
     // a 50 x 62.5 box thins to the vertical line through its middle
-    let { value } = draw('content: "@glyph-field(a, skeleton)"');
+    let { value } = draw('content: "@glyph-field(text: a; skeleton)"');
     assert.doesNotMatch(value, /Z/);
     let [line] = glyphs(value);
     assert.equal(glyphs(value).length, 1);
@@ -88,34 +88,34 @@ test('skeleton gives the middle line of a letter, open', () => {
 
 test('along a path the letters stand on it, turned with it', () => {
     let flat = draw('content: "@glyph-field(ab)"').value;
-    assert.equal(draw('content: "@glyph-field(ab, along M0 0H200)"').value, flat);
-    let box = draw('content: "@glyph-field.box(ab, along M0 0V200)"').value.split(' ').map(Number);
+    assert.equal(draw('content: "@glyph-field(text: ab; along: M0 0H200)"').value, flat);
+    let box = draw('content: "@glyph-field.box(text: ab; along: M0 0V200)"').value.split(' ').map(Number);
     assert.ok(Math.abs(box[2] - 62.5) < 1.5 && Math.abs(box[3] - 100) < 1.5, box.join(' '));
-    assert.deepEqual(draw('content: "@glyph-field(ab, along nope)"').warnings, ['invalid path']);
+    assert.deepEqual(draw('content: "@glyph-field(text: ab; along: nope)"').warnings, ['invalid path']);
 });
 
 test('wave, jitter and spin follow the seed and nothing else', () => {
-    let code = 'content: "@glyph-field(abc, wave 8 90, jitter 5, spin 20)"';
+    let code = 'content: "@glyph-field(text: abc; wave: 8 90; jitter: 5; spin: 20)"';
     let one = draw(code, 1).value;
     assert.equal(draw(code, 1).value, one);
     assert.notEqual(draw(code, 2).value, one);
     assert.notEqual(draw(code, 'learn').value, draw(code, 'other').value);
     assert.notEqual(one, draw('content: "@glyph-field(abc)"').value);
-    let plain = 'content: "@glyph-field(abc, wave 8 90)"';
+    let plain = 'content: "@glyph-field(text: abc; wave: 8 90)"';
     assert.equal(draw(plain, 1).value, draw(plain, 2).value);
 });
 
 test('a font that is not in yet waits, and draws nothing meanwhile', async () => {
     loaded = false;
-    let first = draw('content: "@glyph-field(zz, font Slowly)"');
+    let first = draw('content: "@glyph-field(text: zz; font: Slowly)"');
     assert.equal(first.value, 'M0 0');
     assert.equal(first.waits.length, 1);
     await first.waits[0];
-    assert.equal(glyphs(draw('content: "@glyph-field(zz, font Slowly)"').value).length, 2);
+    assert.equal(glyphs(draw('content: "@glyph-field(text: zz; font: Slowly)"').value).length, 2);
 });
 
 test('spin takes deg and turn', () => {
-    let spin = angle => draw(`content: "@glyph-field(abc, spin ${angle})"`).value;
+    let spin = angle => draw(`content: "@glyph-field(text: abc; spin: ${angle})"`).value;
     assert.equal(spin('.25turn'), spin('90deg'));
     assert.equal(spin('90deg'), spin('90'));
     assert.notEqual(spin('.25turn'), spin('.25'));
@@ -135,22 +135,16 @@ test('along reads the length of the path once', () => {
         return path;
     };
     try {
-        draw('content: "@glyph-field(abcd, along M0 0H300)"');
+        draw('content: "@glyph-field(text: abcd; along: M0 0H300)"');
     } finally {
         document.createElementNS = make;
     }
     assert.equal(calls, 1);
 });
 
-test('declarations draw what the older form draws', () => {
-    let same = (declared, older, seed) => assert.equal(draw(`content: "${declared}"`, seed).value, draw(`content: "${older}"`, seed).value);
-    same('@glyph-field(text: abc; wave: 8 90; jitter: 5; spin: 20deg;)', '@glyph-field(abc, wave 8 90, jitter 5, spin 20deg)', 'golden');
-    same('@glyph-field(text: ab; skeleton; tracking: 10)', '@glyph-field(ab, skeleton, tracking 10)');
-    same('@glyph-field.box(along: M0 0V200; text: ab)', '@glyph-field.box(ab, along M0 0V200)');
-    same(`@glyph-field(text: 'a, b; c')`, `@glyph-field('a, b; c')`);
-    fonts.length = 0;
-    draw('content: "@glyph-field(text: q; font: italic bold Georgia, serif)"');
-    assert.ok(fonts.includes('italic bold 160px Georgia,serif'), fonts.join('|'));
+test('the text alone, or quoted in declarations', () => {
+    assert.equal(draw('content: "@glyph-field(abc)"').value, draw('content: "@glyph-field(text: abc)"').value);
+    assert.equal(glyphs(draw(`content: "@glyph-field(text: 'a, b; c')"`).value).length, 5);
 });
 
 test('declarations warn of unknown options', () => {
@@ -158,14 +152,14 @@ test('declarations warn of unknown options', () => {
     assert.equal(glyphs(draw('content: "@glyph-field(a; b, c)"').value).length, 5, 'with no option named, it is all text');
 });
 
-test('declarations read inside @svg and @shape', () => {
+test('declarations read inside @svg', () => {
     let d = draw('content: "@glyph-field(text: ab; tracking: 10)"').value;
     let { styles } = generateCss(parseCss('background: @svg(viewBox: 0 0 200 100; path { d: @glyph-field(text: ab; tracking: 10); fill: red })'), parseGrid('1'), 1, 64);
     assert.ok(decodeURIComponent(styles.cells).includes(`d="${d}"`));
 });
 
 test('draws what it drew before', () => golden('glyph-field', {
-    jitter: draw('content: "@glyph-field(abc, wave 8 90, jitter 5, spin 20)"', 'golden').value,
-    skeleton: draw('content: "@glyph-field(ab, skeleton, tracking 10)"').value,
-    along: draw('content: "@glyph-field(ab, along M0 0V200, jitter 3)"', 'golden').value,
+    jitter: draw('content: "@glyph-field(text: abc; wave: 8 90; jitter: 5; spin: 20)"', 'golden').value,
+    skeleton: draw('content: "@glyph-field(text: ab; skeleton; tracking: 10)"').value,
+    along: draw('content: "@glyph-field(text: ab; along: M0 0V200; jitter: 3)"', 'golden').value,
 }));

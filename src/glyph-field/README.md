@@ -52,7 +52,6 @@ background: @svg(viewBox: 0 0 440 440; path { d: @glyph-field(text: around the c
   to that angle (`deg` or `turn`), either way.
 - `wave`, `jitter` and `spin` follow the seed, so one seed draws one arrangement.
   Drawing a letter never changes the others.
-- The older `@glyph-field(Hello, font Georgia, wave 12 160)` still draws the same.
 
 ## Notes
 

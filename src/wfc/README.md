@@ -64,8 +64,6 @@ background: @wfc(
   of the grid, for things that stand on the ground. Use it with `symmetry: 2`.
 - Some samples don't fit some grid sizes; then it warns `contradiction`
   and draws nothing. A different size or seed usually works.
-- The older `@wfc(<sample>, . #f4efe6, # #1d3557, n 2, ground)` still draws
-  the same.
 
 ## @wfc.tiles() and @wfc.turn()
 

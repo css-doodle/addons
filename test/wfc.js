@@ -69,16 +69,16 @@ test('@wfc() overlapping model: every 3x3 window of the grid, wrapping, is one f
 });
 
 test('@wfc() takes n, symmetry and a legend', () => {
-    let { cells } = draw(`@grid: 12; --v: @wfc(${SAMPLE}, n 2, symmetry 1);`);
+    let { cells } = draw(`@grid: 12; --v: @wfc(sample: ${SAMPLE}; n: 2; symmetry: 1);`);
     let allowed = windows(SAMPLE.trim().split(/\s+/), 2, 1);
     for (let w of outputWindows(cells, 12, 12, 2)) assert.ok(allowed.has(w), w);
-    let mapped = draw(`@grid: 12; --v: @wfc(${SAMPLE}, n 2, symmetry 1, . #fff, # red);`).cells;
+    let mapped = draw(`@grid: 12; --v: @wfc(sample: ${SAMPLE}; n: 2; symmetry: 1; legend: . #fff, # red);`).cells;
     assert.deepEqual(Object.values(mapped).map(c => c['--v']), Object.values(cells).map(c => ({ '.': '#fff', '#': 'red' })[c['--v']]));
 });
 
 test('@wfc() ground keeps the sample\'s bottom row along the bottom', () => {
     let sample = '..... ..... ..... ..o.. ..o.. .ooo. xxxxx';
-    let { cells, warnings } = draw(`@grid: 10x8; --v: @wfc(${sample}, symmetry 2, ground);`);
+    let { cells, warnings } = draw(`@grid: 10x8; --v: @wfc(sample: ${sample}; symmetry: 2; ground);`);
     assert.deepEqual(warnings, []);
     for (let x = 1; x <= 10; x++) assert.equal(cells[x + ',8']['--v'], 'x');
     for (let y = 1; y < 8; y++) assert.notEqual(cells['1,' + y]['--v'], 'x');
@@ -116,19 +116,19 @@ test('@wfc.tiles() matches the sides tiles share, and @wfc.turn() turns each one
 
 test('@wfc() takes a grid of values, rows split by /, and emoji as characters', () => {
     let grid = 'red red red red / red #222 #222 red / red #222 rgb(0 0 0 / .5) red / red red red red';
-    let { cells, warnings } = draw(`@grid: 12; --v: @wfc(${grid}, #222 navy);`);
+    let { cells, warnings } = draw(`@grid: 12; --v: @wfc(sample: ${grid}; legend: #222 navy);`);
     assert.deepEqual(warnings, []);
     let values = new Set(Object.values(cells).map(c => c['--v']));
     assert.ok([...values].every(v => ['red', 'navy', 'rgb(0 0 0 / .5)'].includes(v)), [...values].join());
     assert.ok(values.has('navy'));
-    let emoji = draw('@grid: 8; --v: @wfc(🌊🌊🏝️🌊 🌊🌊🌊🌊 🌊🐟🌊🌊 🌊🌊🌊🌊, n 2);');
+    let emoji = draw('@grid: 8; --v: @wfc(sample: 🌊🌊🏝️🌊 🌊🌊🌊🌊 🌊🐟🌊🌊 🌊🌊🌊🌊; n: 2);');
     assert.deepEqual(emoji.warnings, []);
     assert.ok(Object.values(emoji.cells).every(c => ['🌊', '🏝️', '🐟'].includes(c['--v'])));
 });
 
 test('values that change from cell to cell keep the layout', () => {
     let plain = draw(`@grid: 12; --v: @wfc(${SAMPLE});`).cells;
-    let random = draw(`@grid: 12; --v: @wfc(${SAMPLE}, # @r(1, 2));`).cells;
+    let random = draw(`@grid: 12; --v: @wfc(sample: ${SAMPLE}; legend: # @r(1, 2));`).cells;
     for (let at in plain) {
         let v = random[at]['--v'];
         assert.ok(plain[at]['--v'] == '#' ? v >= 1 && v < 2 : v == '.', at);
@@ -151,27 +151,23 @@ test('@wfc.order() tells when each cell was decided, from 0 to 1', () => {
 
 test('@wfc() warns about uneven rows, unknown options and tiles without four sides', () => {
     assert.deepEqual(draw('@grid: 4; --v: @wfc(... ..);').warnings, ['uneven sample rows']);
-    assert.deepEqual(draw('@grid: 4; --v: @wfc(.. .#, size 2);').warnings, ['unknown option size 2']);
+    assert.deepEqual(draw('@grid: 4; --v: @wfc(sample: .. .#; size: 2);').warnings, ['unknown option size: 2']);
     assert.deepEqual(draw('@grid: 4; --v: @wfc.tiles(line 101);').warnings, ['invalid tile line 101']);
 });
 
-test('@wfc() declarations draw what the older form draws', () => {
-    let same = (declared, older) => assert.deepEqual(draw(`@grid: 10x8; --v: @wfc(${declared});`, 'golden'), draw(`@grid: 10x8; --v: @wfc(${older});`, 'golden'));
-    same(`sample: ${SAMPLE};`, SAMPLE);
-    same(`sample: ${SAMPLE}; legend: . #fff, # @p(red, blue); n: 2; symmetry: 1;`, `${SAMPLE}, . #fff, # @p(red, blue), n 2, symmetry 1`);
-    same('symmetry: 2; ground; n: 2; sample: ..... ..o.. .ooo. xxxxx', '..... ..o.. .ooo. xxxxx, n 2, symmetry 2, ground');
-    same('sample: red red / red #222; legend: #222 rgb(0, 0, 128)', 'red red / red #222, #222 rgb(0, 0, 128)');
+test('@wfc() takes the sample alone or declared', () => {
+    assert.deepEqual(draw(`@grid: 10x8; --v: @wfc(sample: ${SAMPLE};);`, 'golden'), draw(`@grid: 10x8; --v: @wfc(${SAMPLE});`, 'golden'));
 });
 
-test('@wfc() declarations keep legend keys apart from the options', () => {
+test('@wfc() keeps legend keys apart from the options', () => {
     let { cells, warnings } = draw('@grid: 6; --v: @wfc(sample: nnn nqn nnn; legend: n 2, q 3; n: 2);');
     assert.deepEqual(warnings, []);
     assert.deepEqual(new Set(Object.values(cells).map(c => c['--v'])), new Set(['2', '3']));
-    assert.deepEqual(draw('@grid: 4; --v: @wfc(sample: .. .#; size: 2; n: 4; legend: #);').warnings, ['unknown option size: 2', 'unknown option n: 4', 'invalid legend #']);
+    assert.deepEqual(draw('@grid: 4; --v: @wfc(sample: .. .#; n: 4; legend: #);').warnings, ['unknown option n: 4', 'invalid legend #']);
 });
 
 test('draws what it drew before', () => golden('wfc', {
     overlapping: draw(`@grid: 10x8; --v: @wfc(${SAMPLE});`, 'golden').cells,
-    ground: draw('@grid: 8x6; --v: @wfc(..... ..o.. .ooo. xxxxx, n 2, symmetry 2, ground);', 'golden').cells,
+    ground: draw('@grid: 8x6; --v: @wfc(sample: ..... ..o.. .ooo. xxxxx; n: 2; symmetry: 2; ground);', 'golden').cells,
     tiles: draw('@grid: 6x5; --v: @wfc.tiles(line 1010, corner 1100, cross 1111, empty 0000 2); rotate: @wfc.turn(); --o: @wfc.order();', 'golden').cells,
 }));

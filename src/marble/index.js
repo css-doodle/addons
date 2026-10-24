@@ -27,7 +27,7 @@ customElements.whenDefined('css-doodle').then(() => {
 
     // `name: value;` declarations, cut at the semicolons outside parentheses
     // and quotes; a name alone is a flag. Null when none names a known
-    // option, for the older `value, name value, …` form.
+    // option, for a call that is the main value alone.
     function declarations(text, names) {
         let pieces = [], depth = 0, quote = '', from = 0;
         for (let i = 0; i < text.length; i++) {
@@ -42,13 +42,10 @@ customElements.whenDefined('css-doodle').then(() => {
         return list.some(([name, value]) => value != null && names.includes(name)) ? list : null;
     }
 
-    // `colors: …;` then the options, or in the older form the colors then
-    // `name value…` after commas; each comb of a list, or of a repeat, pulls again
+    // `colors: …;` then the options, or the colors alone; each comb of a
+    // list, or of a repeat, pulls again
     function read(code, { color, split, words, warn }, known) {
-        let list = declarations(code, ['colors', ...known]) ?? split(code).filter(Boolean).map((item, i) => {
-            let [name, ...args] = words(item);
-            return i ? [name, args.join(' ')] : ['colors', item];
-        });
+        let list = declarations(code, ['colors', ...known]) ?? [['colors', code]];
         let first = '', options = [];
         for (let [name, value] of list) {
             if (value == null || !(name == 'colors' || known.includes(name))) warn(`unknown option ${name}`);

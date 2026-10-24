@@ -43,7 +43,6 @@ background: @marble(
   of the height, 8% by default. `<angle>` is the direction of the pull,
   90deg by default (`deg` or `turn`). One comb is pulled when none is given.
 - The same seed draws the same marbling.
-- The older `@marble(white red, drops 60, comb 5% 90deg)` still draws the same.
 
 ## @marble.ink()
 
@@ -69,7 +68,6 @@ background: @marble.ink(
 - The first color is the water, the rest are inks.
 - `scale` is how many clouds fit in the height, 2 by default.
 - `warp` is how much the clouds curl, 2 by default; 0 leaves them round.
-- The older `@marble.ink(#111 #ffd166, scale 1.5)` still draws the same.
 
 The mixing is Kubelka-Munk on the red, green and blue channels, in linear
 light. [pigment](../pigment/) does it on 38 spectral bands, so the greens

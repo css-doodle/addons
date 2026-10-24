@@ -22,7 +22,7 @@ test('colors become K/S in linear light, the first is the paper', () => {
 });
 
 test('drops and combs are read from the options', () => {
-    let { fragment } = run('marble', 'white red, drops 12, size 6%, comb 5% 90deg, comb 10% .25turn');
+    let { fragment } = run('marble', 'colors: white, red; drops: 12; size: 6%; comb: 5% 90deg, 10% .25turn');
     assert.match(fragment, /const int N = 12, T = 2, M = 2;/);
     let [a, b] = line(fragment, 'const vec4 TINE').match(/vec4\([^)]*\)/g);
     assert.equal(a, 'vec4(0.05, 0.0, 1.0, 0.125)');
@@ -35,38 +35,32 @@ test('with no comb option one comb is pulled', () => {
 });
 
 test('ink takes scale and warp', () => {
-    let { fragment } = run('marble.ink', 'white red blue, scale 3, warp 1');
+    let { fragment } = run('marble.ink', 'colors: white, red, blue; scale: 3; warp: 1');
     assert.match(fragment, /\* 3\.0;/);
     assert.match(fragment, /float w = 1\.0;/);
     assert.match(fragment, /const int M = 3;/);
 });
 
-test('declarations draw what the older form draws', () => {
-    let same = (name, declared, older) => assert.equal(run(name, declared).fragment, run(name, older).fragment);
-    same('marble', 'colors: white, red, blue; drops: 12; size: 6%; comb: 5% 90deg, 10% 0deg;', 'white red blue, drops 12, size 6%, comb 5% 90deg, comb 10% 0deg');
-    same('marble', 'colors: white red; comb: 5% 90deg; comb: 10% 0deg', 'white red, comb 5% 90deg, comb 10% 0deg');
-    same('marble', '\n  colors: white, red;\n  drops: 3;\n', 'white red, drops 3');
-    same('marble.ink', 'colors: white, red, blue; scale: 3; warp: 1;', 'white red blue, scale 3, warp 1');
-    same('marble.ink', 'scale: 1; colors: white, rgb(0, 0, 255); scale: 3', 'white rgb(0, 0, 255), scale 3');
-});
-
-test('declarations warn like the older form', () => {
-    assert.deepEqual(run('marble', 'colors: white; drops: 3').warnings, ['no colors']);
-    assert.deepEqual(run('marble', 'colors: white, red; swirl: 3; ground').warnings, ['unknown option swirl', 'unknown option ground']);
-    assert.deepEqual(run('marble.ink', 'colors: white, red; comb: 3').warnings, ['unknown option comb']);
-    assert.deepEqual(run('marble', 'white red; drops: 3').warnings, ['unknown option white red', 'no colors']);
+test('the colors alone, a comb repeated and a declaration given twice', () => {
+    let same = (name, a, b) => assert.equal(run(name, a).fragment, run(name, b).fragment);
+    same('marble', 'white red blue', 'colors: white, red, blue');
+    same('marble', 'colors: white red; comb: 5% 90deg; comb: 10% 0deg', 'colors: white, red; comb: 5% 90deg, 10% 0deg');
+    same('marble', '\n  colors: white, red;\n  drops: 3;\n', 'colors: white, red; drops: 3');
+    same('marble.ink', 'scale: 1; colors: white, rgb(0, 0, 255); scale: 3', 'colors: white rgb(0, 0, 255); scale: 3');
 });
 
 test('bad input warns and falls back', () => {
-    assert.deepEqual(run('marble', 'white, drops 3').warnings, ['no colors']);
+    assert.deepEqual(run('marble', 'colors: white; drops: 3').warnings, ['no colors']);
     assert.deepEqual(run('marble', 'white nope').warnings, ['unknown color nope']);
-    assert.deepEqual(run('marble', 'white red, swirl 3').warnings, ['unknown option swirl']);
-    assert.deepEqual(run('marble.ink', 'white red, comb 3').warnings, ['unknown option comb']);
+    assert.deepEqual(run('marble', 'colors: white, red; swirl: 3; ground').warnings, ['unknown option swirl', 'unknown option ground']);
+    assert.deepEqual(run('marble.ink', 'colors: white, red; comb: 3').warnings, ['unknown option comb']);
+    assert.deepEqual(run('marble', 'white red; drops: 3').warnings, ['unknown option white red', 'no colors']);
+    assert.deepEqual(run('marble', 'white red, drops 3').warnings, ['unknown color drops', 'unknown color 3']);
     assert.match(run('marble', 'red').fragment, /FragColor = vec4\(0\)/);
-    assert.match(run('marble', 'white red, size big').fragment, /float r = 0\.09 \*/);
+    assert.match(run('marble', 'colors: white, red; size: big').fragment, /float r = 0\.09 \*/);
 });
 
 test('draws what it drew before', () => golden('marble', {
-    marble: run('marble', 'white red blue, drops 12, size 6%, comb 5% 90deg, comb 10% 0deg').fragment,
-    ink: run('marble.ink', 'white red blue, scale 3, warp 1').fragment,
+    marble: run('marble', 'colors: white, red, blue; drops: 12; size: 6%; comb: 5% 90deg, 10% 0deg').fragment,
+    ink: run('marble.ink', 'colors: white, red, blue; scale: 3; warp: 1').fragment,
 }));
