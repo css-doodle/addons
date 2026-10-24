@@ -25,19 +25,41 @@ customElements.whenDefined('css-doodle').then(() => {
         }
     `;
 
-    // option lines after the colors: `name value…`, a name may repeat
+    // `name: value;` declarations, cut at the semicolons outside parentheses
+    // and quotes; a name alone is a flag. Null when none names a known
+    // option, for the older `value, name value, …` form.
+    function declarations(text, names) {
+        let pieces = [], depth = 0, quote = '', from = 0;
+        for (let i = 0; i < text.length; i++) {
+            let c = text[i];
+            if (quote) c == quote && (quote = '');
+            else if (c == '"' || c == "'") quote = c;
+            else if (c == '(' || c == ')') depth += c == '(' ? 1 : -1;
+            else if (c == ';' && !depth) pieces.push(text.slice(from, i)), from = i + 1;
+        }
+        let list = [...pieces, text.slice(from)].map(p => p.trim()).filter(Boolean)
+            .map(p => p.match(/^([\w-]+)\s*:\s*([^]*)$/)?.slice(1) ?? [p, null]);
+        return list.some(([name, value]) => value != null && names.includes(name)) ? list : null;
+    }
+
+    // `colors: …;` then the options, or in the older form the colors then
+    // `name value…` after commas; each comb of a list, or of a repeat, pulls again
     function read(code, { color, split, words, warn }, known) {
-        let [first = '', ...rest] = split(code).filter(Boolean);
-        let options = [], colors = words(first).map(value => {
+        let list = declarations(code, ['colors', ...known]) ?? split(code).filter(Boolean).map((item, i) => {
+            let [name, ...args] = words(item);
+            return i ? [name, args.join(' ')] : ['colors', item];
+        });
+        let first = '', options = [];
+        for (let [name, value] of list) {
+            if (value == null || !(name == 'colors' || known.includes(name))) warn(`unknown option ${name}`);
+            else if (name == 'colors') first = split(value).join(' ');
+            else options.push(...(name == 'comb' && value ? split(value) : [value]).map(v => [name, words(v)]));
+        }
+        let colors = words(first).map(value => {
             let rgba = color(value);
             if (!rgba) warn(`unknown color ${value}`);
             return (rgba || [0, 0, 0, 1]).slice(0, 3).map(linear).map(c => Math.max(c, .004));
         });
-        for (let item of rest) {
-            let [name, ...args] = words(item);
-            if (known.includes(name)) options.push([name, args]);
-            else warn(`unknown option ${name}`);
-        }
         let ks = colors.map(c => vec(c.map(v => (1 - v) ** 2 / (2 * v))));
         return { ks, options, get: (name, fallback) => options.findLast(([n]) => n == name)?.[1][0] ?? fallback };
     }

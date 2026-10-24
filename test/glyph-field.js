@@ -142,6 +142,28 @@ test('along reads the length of the path once', () => {
     assert.equal(calls, 1);
 });
 
+test('declarations draw what the older form draws', () => {
+    let same = (declared, older, seed) => assert.equal(draw(`content: "${declared}"`, seed).value, draw(`content: "${older}"`, seed).value);
+    same('@glyph-field(text: abc; wave: 8 90; jitter: 5; spin: 20deg;)', '@glyph-field(abc, wave 8 90, jitter 5, spin 20deg)', 'golden');
+    same('@glyph-field(text: ab; skeleton; tracking: 10)', '@glyph-field(ab, skeleton, tracking 10)');
+    same('@glyph-field.box(along: M0 0V200; text: ab)', '@glyph-field.box(ab, along M0 0V200)');
+    same(`@glyph-field(text: 'a, b; c')`, `@glyph-field('a, b; c')`);
+    fonts.length = 0;
+    draw('content: "@glyph-field(text: q; font: italic bold Georgia, serif)"');
+    assert.ok(fonts.includes('italic bold 160px Georgia,serif'), fonts.join('|'));
+});
+
+test('declarations warn of unknown options', () => {
+    assert.deepEqual(draw('content: "@glyph-field(text: a; size: 3; skeleton: yes; a)"').warnings, ['unknown option size', 'unknown option skeleton', 'unknown option a']);
+    assert.equal(glyphs(draw('content: "@glyph-field(a; b, c)"').value).length, 5, 'with no option named, it is all text');
+});
+
+test('declarations read inside @svg and @shape', () => {
+    let d = draw('content: "@glyph-field(text: ab; tracking: 10)"').value;
+    let { styles } = generateCss(parseCss('background: @svg(viewBox: 0 0 200 100; path { d: @glyph-field(text: ab; tracking: 10); fill: red })'), parseGrid('1'), 1, 64);
+    assert.ok(decodeURIComponent(styles.cells).includes(`d="${d}"`));
+});
+
 test('draws what it drew before', () => golden('glyph-field', {
     jitter: draw('content: "@glyph-field(abc, wave 8 90, jitter 5, spin 20)"', 'golden').value,
     skeleton: draw('content: "@glyph-field(ab, skeleton, tracking 10)"').value,

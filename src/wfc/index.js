@@ -183,6 +183,52 @@ customElements.whenDefined('css-doodle').then(() => {
         return rows;
     }
 
+    // `name: value;` declarations, cut at the semicolons outside parentheses
+    // and quotes; a name alone is a flag. Null when none names a known
+    // option, for the older `value, name value, …` form.
+    function declarations(text, names) {
+        let pieces = [], depth = 0, quote = '', from = 0;
+        for (let i = 0; i < text.length; i++) {
+            let c = text[i];
+            if (quote) c == quote && (quote = '');
+            else if (c == '"' || c == "'") quote = c;
+            else if (c == '(' || c == ')') depth += c == '(' ? 1 : -1;
+            else if (c == ';' && !depth) pieces.push(text.slice(from, i)), from = i + 1;
+        }
+        let list = [...pieces, text.slice(from)].map(p => p.trim()).filter(Boolean)
+            .map(p => p.match(/^([\w-]+)\s*:\s*([^]*)$/)?.slice(1) ?? [p, null]);
+        return list.some(([name, value]) => value != null && names.includes(name)) ? list : null;
+    }
+
+    // `sample: …;` and the options as declarations, `ground` alone; or in the
+    // older form the sample, then options and legend entries after commas
+    function readOptions([sample = '', ...rest], { split, words, warn }) {
+        let options = { sample: String(sample), legend: {}, n: 3, symmetry: 8, ground: false };
+        let set = (name, value) => {
+            if (name == 'n' && /^[23]$/.test(value)) options.n = +value;
+            else if (name == 'symmetry' && /^[1-8]$/.test(value)) options.symmetry = +value;
+            else if (name == 'ground' && !value) options.ground = true;
+            else return false;
+            return true;
+        };
+        let list = declarations([sample, ...rest].join(','), ['sample', 'legend', 'n', 'symmetry']);
+        if (list) for (let [name, value] of list) {
+            if (name == 'sample' && value != null) options.sample = value;
+            else if (name == 'legend' && value != null) for (let entry of split(value)) {
+                let [key, ...parts] = words(entry);
+                if (parts.length) options.legend[key] = parts.join(' ');
+                else warn(`invalid legend ${entry}`);
+            }
+            else if (!set(name, value)) warn(`unknown option ${name}${value == null ? '' : ': ' + value}`);
+        } else for (let arg of rest) {
+            let [name, ...value] = words(String(arg));
+            if (set(name, value.join(' '))) continue;
+            if (value.length) options.legend[name] = value.join(' ');
+            else warn(`unknown option ${arg}`);
+        }
+        return options;
+    }
+
     function readTiles(args, words, warn) {
         let entries = [];
         for (let arg of args) {
@@ -219,17 +265,9 @@ customElements.whenDefined('css-doodle').then(() => {
     let last, lastOrder;
 
     CSSDoodle.use('wfc', {
-        value: ([sample, ...rest], api) => {
+        value: (args, api) => {
             let { x, y, X, Y, seed, words, state, warn } = api;
-            let options = [], legend = {}, n = 3, symmetry = 8, ground = false;
-            for (let arg of rest) {
-                let [name, ...value] = words(String(arg));
-                if (name == 'n' && /^[23]$/.test(value)) n = +value;
-                else if (name == 'symmetry' && /^[1-8]$/.test(value)) symmetry = +value;
-                else if (name == 'ground' && !value.length) ground = true;
-                else if (value.length) legend[name] = value.join(' ');
-                else warn(`unknown option ${arg}`);
-            }
+            let { sample, legend, n, symmetry, ground } = readOptions(args, api);
             let key = ['wfc', seed, X, Y, sample, n, symmetry, ground].join('\n');
             let { cells = [], tokens = [], order } = cached(key, api, warn => {
                 let rows = readRows(sample, words);

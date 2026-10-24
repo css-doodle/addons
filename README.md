@@ -129,6 +129,9 @@ itself is in. Only an addon's own name takes variants.
 
 ### Rules
 
+- A function with options takes them as declarations, like `@shape()`:
+  `@name(colors: red, blue; scale: 2)`, a flag as a name alone. One or two
+  plain values go in as they are, like the arguments of a CSS function.
 - Output should depend only on the input, `random`, `seed` and `stream`,
   so a seed keeps drawing the same picture. Version the addon file.
 - A name that is already taken is kept: a built-in name warns, an addon

@@ -155,6 +155,21 @@ test('@wfc() warns about uneven rows, unknown options and tiles without four sid
     assert.deepEqual(draw('@grid: 4; --v: @wfc.tiles(line 101);').warnings, ['invalid tile line 101']);
 });
 
+test('@wfc() declarations draw what the older form draws', () => {
+    let same = (declared, older) => assert.deepEqual(draw(`@grid: 10x8; --v: @wfc(${declared});`, 'golden'), draw(`@grid: 10x8; --v: @wfc(${older});`, 'golden'));
+    same(`sample: ${SAMPLE};`, SAMPLE);
+    same(`sample: ${SAMPLE}; legend: . #fff, # @p(red, blue); n: 2; symmetry: 1;`, `${SAMPLE}, . #fff, # @p(red, blue), n 2, symmetry 1`);
+    same('symmetry: 2; ground; n: 2; sample: ..... ..o.. .ooo. xxxxx', '..... ..o.. .ooo. xxxxx, n 2, symmetry 2, ground');
+    same('sample: red red / red #222; legend: #222 rgb(0, 0, 128)', 'red red / red #222, #222 rgb(0, 0, 128)');
+});
+
+test('@wfc() declarations keep legend keys apart from the options', () => {
+    let { cells, warnings } = draw('@grid: 6; --v: @wfc(sample: nnn nqn nnn; legend: n 2, q 3; n: 2);');
+    assert.deepEqual(warnings, []);
+    assert.deepEqual(new Set(Object.values(cells).map(c => c['--v'])), new Set(['2', '3']));
+    assert.deepEqual(draw('@grid: 4; --v: @wfc(sample: .. .#; size: 2; n: 4; legend: #);').warnings, ['unknown option size: 2', 'unknown option n: 4', 'invalid legend #']);
+});
+
 test('draws what it drew before', () => golden('wfc', {
     overlapping: draw(`@grid: 10x8; --v: @wfc(${SAMPLE});`, 'golden').cells,
     ground: draw('@grid: 8x6; --v: @wfc(..... ..o.. .ooo. xxxxx, n 2, symmetry 2, ground);', 'golden').cells,

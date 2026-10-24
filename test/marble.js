@@ -41,6 +41,22 @@ test('ink takes scale and warp', () => {
     assert.match(fragment, /const int M = 3;/);
 });
 
+test('declarations draw what the older form draws', () => {
+    let same = (name, declared, older) => assert.equal(run(name, declared).fragment, run(name, older).fragment);
+    same('marble', 'colors: white, red, blue; drops: 12; size: 6%; comb: 5% 90deg, 10% 0deg;', 'white red blue, drops 12, size 6%, comb 5% 90deg, comb 10% 0deg');
+    same('marble', 'colors: white red; comb: 5% 90deg; comb: 10% 0deg', 'white red, comb 5% 90deg, comb 10% 0deg');
+    same('marble', '\n  colors: white, red;\n  drops: 3;\n', 'white red, drops 3');
+    same('marble.ink', 'colors: white, red, blue; scale: 3; warp: 1;', 'white red blue, scale 3, warp 1');
+    same('marble.ink', 'scale: 1; colors: white, rgb(0, 0, 255); scale: 3', 'white rgb(0, 0, 255), scale 3');
+});
+
+test('declarations warn like the older form', () => {
+    assert.deepEqual(run('marble', 'colors: white; drops: 3').warnings, ['no colors']);
+    assert.deepEqual(run('marble', 'colors: white, red; swirl: 3; ground').warnings, ['unknown option swirl', 'unknown option ground']);
+    assert.deepEqual(run('marble.ink', 'colors: white, red; comb: 3').warnings, ['unknown option comb']);
+    assert.deepEqual(run('marble', 'white red; drops: 3').warnings, ['unknown option white red', 'no colors']);
+});
+
 test('bad input warns and falls back', () => {
     assert.deepEqual(run('marble', 'white, drops 3').warnings, ['no colors']);
     assert.deepEqual(run('marble', 'white nope').warnings, ['unknown color nope']);

@@ -110,17 +110,42 @@ customElements.whenDefined('css-doodle').then(() => {
         return entry;
     }
 
-    // text, then `name value` options; a piece that names no option belongs to the one before
-    function read(args) {
-        let pieces = [], options = {}, name = 'text';
-        for (let arg of args.map(String)) {
-            let key = arg.trim().split(/\s/)[0];
-            if (pieces.length && OPTIONS.includes(key)) pieces.push([name = key, arg.trim().slice(key.length).trim()]);
-            else if (pieces.length) pieces.at(-1)[1] += ',' + arg;
-            else pieces.push([name, arg]);
+    // `name: value;` declarations, cut at the semicolons outside parentheses
+    // and quotes; a name alone is a flag. Null when none names a known
+    // option, for the older `value, name value, …` form.
+    function declarations(text, names) {
+        let pieces = [], depth = 0, quote = '', from = 0;
+        for (let i = 0; i < text.length; i++) {
+            let c = text[i];
+            if (quote) c == quote && (quote = '');
+            else if (c == '"' || c == "'") quote = c;
+            else if (c == '(' || c == ')') depth += c == '(' ? 1 : -1;
+            else if (c == ';' && !depth) pieces.push(text.slice(from, i)), from = i + 1;
         }
-        for (let [key, value] of pieces) options[key] = value.trim();
-        options.text = options.text.replace(/^(['"])(.*)\1$/s, '$2');
+        let list = [...pieces, text.slice(from)].map(p => p.trim()).filter(Boolean)
+            .map(p => p.match(/^([\w-]+)\s*:\s*([^]*)$/)?.slice(1) ?? [p, null]);
+        return list.some(([name, value]) => value != null && names.includes(name)) ? list : null;
+    }
+
+    // `text: …;` then the options, `skeleton` alone; or in the older form the
+    // text, then `name value` options, where a piece that names no option
+    // belongs to the one before
+    function read(args, warn) {
+        let options = {}, list = declarations(args.join(','), ['text', ...OPTIONS]);
+        if (list) for (let [name, value] of list) {
+            if (name == 'skeleton' ? value == null : value != null && (name == 'text' || OPTIONS.includes(name))) options[name] = value ?? '';
+            else warn(`unknown option ${name}`);
+        } else {
+            let pieces = [], name = 'text';
+            for (let arg of args.map(String)) {
+                let key = arg.trim().split(/\s/)[0];
+                if (pieces.length && OPTIONS.includes(key)) pieces.push([name = key, arg.trim().slice(key.length).trim()]);
+                else if (pieces.length) pieces.at(-1)[1] += ',' + arg;
+                else pieces.push([name, arg]);
+            }
+            for (let [key, value] of pieces) options[key] = value.trim();
+        }
+        options.text = (options.text ?? '').replace(/^(['"])(.*)\1$/s, '$2');
         return options;
     }
 
@@ -168,7 +193,7 @@ customElements.whenDefined('css-doodle').then(() => {
     }
 
     function build(args, api) {
-        let options = read(args), key = JSON.stringify([options, api.seed]);
+        let options = read(args, api.warn), key = JSON.stringify([options, api.seed]);
         if (!layouts.has(key)) {
             let result = lay(options, api);
             if (!result) return null;
