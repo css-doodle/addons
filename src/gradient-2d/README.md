@@ -1,0 +1,42 @@
+# gradient-2d
+
+`@mesh-gradient()` and `@freeform-gradient()`, a simpler syntax for the
+[CSS 2D gradients explainer](https://github.com/w3c/csswg-drafts/blob/main/css-images-5/explainers/2d-gradients.md),
+drawn with WebGL like `@pattern`.
+
+```css
+@use: gradient-2d;
+```
+
+## @mesh-gradient()
+
+```css
+background: @mesh-gradient(red gold, teal navy);
+background: @mesh-gradient(#f43 gold #0bf, #a0f white at 40% 60% #0c6, navy #f0a teal);
+```
+
+`@mesh-gradient([in <space>,] <row>, <row>, …)`
+
+- Rows are separated by commas, top row first; colors in a row by spaces.
+- Points sit on an even grid; `<color> at <x> <y>` moves one point.
+- The curves between points are smooth, with no control points to set.
+- One row runs left to right; one color per row runs top to bottom.
+- A shorter row repeats its last color.
+- A point moved close to the edge can fold the gradient there.
+
+## @freeform-gradient()
+
+```css
+background: @freeform-gradient(red at top left, gold 20% at 70% 30%, teal at bottom);
+```
+
+`@freeform-gradient([in <space>,] <color> [<spread>] at <position>, …)`
+
+- Each color blends out from its position.
+- `<spread>` is a percentage: the radius the color stays solid.
+- A color without a position sits at the center.
+
+## Values
+
+- Positions take percentages and `left`, `right`, `top`, `bottom`, `center`, not lengths.
+- Spaces are `oklab` (default), `srgb` and `srgb-linear`. Colors mix with premultiplied alpha.

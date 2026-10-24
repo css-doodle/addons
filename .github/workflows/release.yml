@@ -1,0 +1,53 @@
+name: Release
+
+# `npm version minor && git push --follow-tags` tests and publishes dist/
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write # npm trusted publishing, which also signs provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: addons
+    steps:
+      # side by side, as in development, so the tests find ../css-doodle
+      - uses: actions/checkout@v5
+        with:
+          path: addons
+
+      - uses: actions/checkout@v5
+        with:
+          repository: css-doodle/css-doodle
+          path: css-doodle
+
+      # Node 24 comes with npm 11, which trusted publishing needs
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Check the tag is the package version
+        run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
+
+      # no lockfile is tracked, so npm ci is not an option; the tests run
+      # against the core checkout, so the css-doodle peer is left out
+      - run: npm install --no-audit --no-fund --legacy-peer-deps
+
+      # the core's playwright-core and esbuild, for the browser test
+      - run: npm install --no-audit --no-fund
+        working-directory: css-doodle
+
+      - run: npm test
+
+      # builds dist/, tests it, and draws the shaders in the runner's
+      # Google Chrome, on SwiftShader
+      - run: npm run test:dist
+
+      # ./ so it can never be taken for the package named dist on npm
+      - run: npm publish ./dist

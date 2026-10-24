@@ -1,0 +1,28 @@
+{
+  "name": "@css-doodle/addons",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Addons for css-doodle, released apart from the core",
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-reporter dot test/*.js",
+    "test:dist": "npm run build && ADDONS=dist node --test --test-reporter dot test/*.js test/browser/*.js",
+    "build": "node build/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/css-doodle/addons.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "css-doodle": ">=0.65.0"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.16.1",
+    "acorn": "^8.15.0",
+    "esbuild": "^0.25.4"
+  }
+}
