@@ -60,7 +60,37 @@ test('bad input warns and falls back', () => {
     assert.match(run('marble', 'colors: white, red; size: big').fragment, /float r = 0\.09 \*/);
 });
 
+test('a number option takes math, with t the time in seconds', () => {
+    let { fragment, warnings } = run('marble', 'colors: white, red; drops: min(t * 8, 40); size: 9% + 2% * sin(t); comb: 6% (90deg + .05turn * t), (8% - t) 0deg');
+    assert.deepEqual(warnings, []);
+    assert.match(fragment, /const int T = 2, M = 2;/);
+    assert.match(fragment, /float D = clamp\(min\(\(u_time \* 8\.0\), 40\.0\), 0\.0, 400\.0\);\s+int N = int\(ceil\(D\)\);/);
+    assert.match(fragment, /float r = \(9\.0 \+ \(2\.0 \* sin\(u_time\)\)\) \* 0\.01 \* \(\.5 \+ g_hash\(f \+ 2\.0\)\) \* min\(D - float\(k\), 1\.0\);/);
+    assert.equal(line(fragment, 'vec4 TINE'), 'vec4 TINE[T] = vec4[](g_tine(0.06, radians((90.0 + (18.0 * u_time)))), g_tine(max((8.0 - u_time) * 0.01, 0.001), 0.0));');
+    let ink = run('marble.ink', 'colors: white, red; scale: 2 + sin(t); warp: t % 3');
+    assert.match(ink.fragment, /u_resolution\.y \* \(2\.0 \+ sin\(u_time\)\);\s+float w = mod\(u_time, 3\.0\);/);
+    assert.deepEqual(ink.warnings, []);
+});
+
+test('flow slides the comb and drifts the ink, and none or 0 keeps them still', () => {
+    assert.match(run('marble', 'colors: white, red; flow: 2').fragment, /float d = dot\(p, vec2\(-m\.y, m\.x\)\) \/ t\.x - u_time \* 0\.2,/);
+    assert.match(run('marble.ink', 'colors: white, red; flow: 1').fragment, /vec2\(1\.7, 9\.2\) \+ u_time \* 0\.06\), g_fbm\(p \+ w \* q \+ vec2\(8\.3, 2\.8\) \+ u_time \* 0\.05\)/);
+    for (let name of ['marble', 'marble.ink']) {
+        assert.equal(run(name, 'colors: white, red; flow: 0').fragment, run(name, 'white red').fragment);
+        assert.doesNotMatch(run(name, 'white red').fragment, /u_time/);
+    }
+});
+
+test('math that does not read warns, and the option reads as a number', () => {
+    let size = code => [line(run('marble', 'colors: white, red; size: ' + code).fragment, 'float r'), run('marble', 'colors: white, red; size: ' + code).warnings];
+    assert.deepEqual(size('big'), ['float r = 0.09 * (.5 + g_hash(f + 2.0));', ['unknown name big']]);
+    assert.deepEqual(size('6% +'), ['float r = 0.06 * (.5 + g_hash(f + 2.0));', ['nothing after +']]);
+    assert.deepEqual(size('9% + var(--cssd-utime)'), ['float r = 0.09 * (.5 + g_hash(f + 2.0));', ['@t is CSS time, use t']]);
+});
+
 test('draws what it drew before', () => golden('marble', {
     marble: run('marble', 'colors: white, red, blue; drops: 12; size: 6%; comb: 5% 90deg, 10% 0deg').fragment,
     ink: run('marble.ink', 'colors: white, red, blue; scale: 3; warp: 1').fragment,
+    'marble moving': run('marble', 'colors: white, red, blue; drops: min(t * 4, 12); size: 6% + 1% * sin(t); comb: 5% (90deg + 10deg * t), 10% 0deg; flow: 1').fragment,
+    'ink moving': run('marble.ink', 'colors: white, red, blue; scale: 3; warp: 1 + sin(t); flow: 1').fragment,
 }));

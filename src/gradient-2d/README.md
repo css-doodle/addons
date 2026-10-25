@@ -36,6 +36,25 @@ background: @freeform-gradient(red at top left, gold 20% at 70% 30%, teal at bot
 - `<spread>` is a percentage: the radius the color stays solid.
 - A color without a position sits at the center.
 
+## Moving
+
+A position or a spread also takes math in parentheses, as in `@pattern`,
+with `t` for the time in seconds. The gradient moves when any reads `t`:
+
+```css
+background: @mesh-gradient(#f43 gold #0bf, #a0f white at (50% + 25% * sin(t)) (50% + 25% * cos(t)) #0c6, navy #f0a teal);
+background: @freeform-gradient(red at top left, gold (10% + 8% * sin(t * 2)) at 70% 30%, teal at (50% + 40% * sin(t)) bottom);
+```
+
+- `t` is the shader's time. `@t` is CSS time, which the shader never sees.
+- `9%` is a percentage and `t % 2` the remainder. `left`, `top` and the
+  other words don't go in math. The functions are GLSL's, like `sin()`,
+  `min()` and `smoothstep()`.
+- Points that move keep blending with their nearest neighbors as they go.
+- Math that doesn't read warns, and the point goes where it would without
+  a position, or without a spread.
+- Math needs a css-doodle newer than 0.65.
+
 ## Values
 
 - Positions take percentages and `left`, `right`, `top`, `bottom`, `center`, not lengths.

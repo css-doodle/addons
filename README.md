@@ -13,11 +13,8 @@ background: @mesh-gradient(red gold, teal navy);
 
 | Addon | Adds | |
 | --- | --- | --- |
-| [glyph-field](src/glyph-field/) | `@glyph-field()`, `@glyph-field.box()` | text as an SVG path, with control over every letter |
 | [gradient-2d](src/gradient-2d/) | `@mesh-gradient()`, `@freeform-gradient()` | 2D gradients, drawn with WebGL |
 | [marble](src/marble/) | `@marble()`, `@marble.ink()` | paper marbling and ink in water |
-| [maze](src/maze/) | `@maze()` | the grid as a maze |
-| [photo](src/photo/) | `@photo()`, `@photo.lum()` | an image's color or lightness under each cell |
 | [pigment](src/pigment/) | `@pigment()` | colors that mix like paint |
 | [spring](src/spring/) | `@spring()` | spring-like easing |
 | [trace](src/trace/) | `@trace()` | an image's outline as an SVG path |
@@ -112,6 +109,11 @@ arguments, already evaluated and split at commas, and returns CSS text.
 `u_resolution`, `u_time`, `u_mouse`, `u_seed` and `FragColor`, sizes the
 image, and animates it when it reads `u_time`.
 
+Its `api` also has `expr(text)`: the math of `@pattern` as GLSL for a
+float, with `t` for the time in seconds, `9%` as 9 and an angle in
+degrees, or `null`, with a warning, when it doesn't read. Math that reads
+`t` reads `u_time`, so the image moves.
+
 ### Both kinds
 
 The `api` of both kinds has:
@@ -132,6 +134,8 @@ itself is in. Only an addon's own name takes variants.
 - A function with options takes them as declarations, like `@shape()`:
   `@name(colors: red, blue; scale: 2)`, a flag as a name alone. One or two
   plain values go in as they are, like the arguments of a CSS function.
+- A number option of a shader takes math through `expr()`, so `t` can
+  move it; a number alone still reads as it did.
 - Output should depend only on the input, `random`, `seed` and `stream`,
   so a seed keeps drawing the same picture. Version the addon file.
 - A name that is already taken is kept: a built-in name warns, an addon

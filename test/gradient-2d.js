@@ -60,8 +60,29 @@ test('bad input warns and falls back', () => {
     assert.deepEqual(freeform('in oklab').warnings, ['no colors']);
 });
 
+test('a position or a spread takes math in parentheses, with t the time in seconds', () => {
+    let { fragment, warnings } = mesh('red blue,white at (50% + 20% * sin(t)) 40% red');
+    assert.deepEqual(warnings, []);
+    assert.equal(line(fragment, 'vec2 P'), 'vec2 P[4];');
+    assert.equal(line(fragment, 'P = '), 'P = vec2[](vec2(0.0, 0.0), vec2(1.0, 0.0), vec2((50.0 + (20.0 * sin(u_time))) * 0.01, 0.4), vec2(1.0, 1.0));');
+    let free = freeform('red at top left,blue (20% + 5% * sin(t)) at right,white at (30% + t) 40%');
+    assert.deepEqual(free.warnings, []);
+    assert.equal(line(free.fragment, 'P = '), 'P = vec2[](vec2(0.0, 0.0), vec2(1.0, 0.5), vec2((30.0 + u_time) * 0.01, 0.4));');
+    assert.equal(line(free.fragment, 'float A'), 'float A[N] = float[](0.0, (20.0 + (5.0 * sin(u_time))) * 0.01, 0.0);');
+    assert.equal(line(free.fragment, 'S[i] ='), 'S[i] = vec2(A[i], (A[i] != 0.0 ? 0.0 : m * m / 4.0) + 1e-5);');
+});
+
+test('math that does not read warns, and the point goes where it would without it', () => {
+    let { fragment, warnings } = freeform('red at (nope) 20%,blue (2 +) at right');
+    assert.deepEqual(warnings, ['unknown name nope', 'unexpected )']);
+    assert.equal(line(fragment, 'const vec2 P'), 'const vec2 P[N] = vec2[](vec2(0.5, 0.5), vec2(1.0, 0.5));');
+    assert.equal(line(fragment, 'const vec2 S'), 'const vec2 S[N] = vec2[](vec2(0.0, 0.06251), vec2(0.0, 0.06251));');
+});
+
 test('draws what it drew before', () => golden('gradient-2d', {
     mesh: mesh('red blue white,white at 40% 60% red blue').fragment,
     srgb: mesh('in srgb,half blue').fragment,
     freeform: freeform('red at top left,blue 20% at right,white at 30%').fragment,
+    'mesh moving': mesh('red blue white,white at (50% + 20% * sin(t)) (50% + 20% * cos(t)) red blue').fragment,
+    'freeform moving': freeform('red at top left,blue (20% + 5% * sin(t)) at right,white at (30% + 10% * t) 40%').fragment,
 }));
