@@ -135,7 +135,9 @@ customElements.whenDefined('css-doodle').then(() => {
         let near = a => Math.min(1, ...points.filter(b => b != a).map(b => Math.hypot(a.xy[0] - b.xy[0], a.xy[1] - b.xy[1])));
         let P = `vec2[](${points.map(a => vec(a.xy)).join(', ')})`;
         // with math, each pixel finds the spreads, and how far each point
-        // is from the nearest other, as the points move
+        // is from the nearest other, as the points move; counted as no
+        // closer than .35, so two points passing each other blend softly
+        // instead of pinching into a seam
         let moving = points.some(a => [...a.xy, a.spread].some(v => typeof v != 'number'));
         let spreads = [
             `P = ${P};`,
@@ -143,6 +145,7 @@ customElements.whenDefined('css-doodle').then(() => {
             'for (int i = 0; i < N; i++) {',
             '    float m = 1.0;',
             '    for (int j = 0; j < N; j++) if (j != i) m = min(m, distance(P[i], P[j]));',
+            '    m = max(m, 0.35);',
             '    S[i] = vec2(A[i], (A[i] != 0.0 ? 0.0 : m * m / 4.0) + 1e-5);',
             '}',
         ];

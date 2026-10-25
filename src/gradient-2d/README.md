@@ -50,7 +50,8 @@ background: @freeform-gradient(red at top left, gold (10% + 8% * sin(t * 2)) at 
 - `9%` is a percentage and `t % 2` the remainder. `left`, `top` and the
   other words don't go in math. The functions are GLSL's, like `sin()`,
   `min()` and `smoothstep()`.
-- Points that move keep blending with their nearest neighbors as they go.
+- Points that move keep blending with their nearest neighbors as they go,
+  and blend softly when they pass close to each other.
 - Math that doesn't read warns, and the point goes where it would without
   a position, or without a spread.
 - Math needs a css-doodle newer than 0.65.
